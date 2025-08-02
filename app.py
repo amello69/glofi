@@ -244,62 +244,64 @@ elif page == "2. Assess GLOF Risk":
         try:
             # Read uploaded file
             df = pd.read_csv(uploaded_file)
+            st.write("Uploaded Data Preview:")
+            st.dataframe(df.head())
             
-            # Check required columns. Note that 'ice_coverage', 'lake_volume', 'dam_type' etc., 
-            # would be expected from a more complete dataset.
-            # Assuming the user provides a file with all columns needed for the model.
-            required_columns_for_model = {
-                'Temperature_Celsius', 'Rainfall_mm', 'Cloud_Cover_Percent', 'Humidity_Percent',
-                'Seismic_Event_Count', 'lake_volume', 'dam_type', 'ice_coverage',
-                'Slope_Mean(degree)', 'Elev_Mean(m)'
-            }
-            
-            # Check if necessary columns are present
-            if not required_columns_for_model.issubset(df.columns):
-                missing = required_columns_for_model - set(df.columns)
-                st.error(f"Missing required columns for risk calculation: {', '.join(missing)}")
-                st.info("Please ensure your uploaded CSV contains these columns. A `glacier_data_enriched.csv` from Stage 1 can be used.")
-                st.stop()
-            
-            # Display a spinner while processing
-            with st.spinner('Calculating flood intensities...'):
-                df['intensity'] = calculate_intensity(df)
-                df['intensity_class'] = classify_intensity(df['intensity'])
-            
-            # Display results
-            st.success("Processing complete!")
-            
-            # Show statistics
-            st.subheader("Risk Statistics")
-            col1, col2, col3 = st.columns(3)
-            col1.metric("Max Intensity", f"{df['intensity'].max():,.2f}")
-            col2.metric("Min Intensity", f"{df['intensity'].min():,.2f}")
-            col3.metric("Avg Intensity", f"{df['intensity'].mean():,.2f}")
-            
-            # Classification distribution
-            st.subheader("Risk Classification Distribution")
-            class_counts = df['intensity_class'].value_counts()
-            st.bar_chart(class_counts)
-            
-            # Show high-risk samples
-            st.subheader("High-Risk Locations")
-            high_risk = df[df['intensity_class'] == 'Catastrophic']
-            if not high_risk.empty:
-                st.dataframe(high_risk[['GLIMS_ID', 'Date', 'dam_type', 'lake_volume', 'intensity', 'intensity_class']].head(10))
-            else:
-                st.info("No catastrophic risk locations found")
-            
-            # Show processed data
-            st.subheader("Processed Data Preview")
-            st.dataframe(df[['GLIMS_ID', 'Date', 'dam_type', 'lake_volume', 'intensity', 'intensity_class']].head())
-            
-            # Download button for the final processed data
-            st.download_button(
-                label="Download Final Processed Data",
-                data=df.to_csv(index=False).encode('utf-8'),
-                file_name='glof_risk_processed.csv',
-                mime='text/csv'
-            )
+            if st.button("Calculate GLOF Risk"):
+                # Check required columns. Note that 'ice_coverage', 'lake_volume', 'dam_type' etc., 
+                # would be expected from a more complete dataset.
+                # Assuming the user provides a file with all columns needed for the model.
+                required_columns_for_model = {
+                    'Temperature_Celsius', 'Rainfall_mm', 'Cloud_Cover_Percent', 'Humidity_Percent',
+                    'Seismic_Event_Count', 'lake_volume', 'dam_type', 'ice_coverage',
+                    'Slope_Mean(degree)', 'Elev_Mean(m)'
+                }
+                
+                # Check if necessary columns are present
+                if not required_columns_for_model.issubset(df.columns):
+                    missing = required_columns_for_model - set(df.columns)
+                    st.error(f"Missing required columns for risk calculation: {', '.join(missing)}")
+                    st.info("Please ensure your uploaded CSV contains these columns. A `glacier_data_enriched.csv` from Stage 1 can be used.")
+                else:
+                    # Display a spinner while processing
+                    with st.spinner('Calculating flood intensities...'):
+                        df['intensity'] = calculate_intensity(df)
+                        df['intensity_class'] = classify_intensity(df['intensity'])
+                    
+                    # Display results
+                    st.success("Processing complete!")
+                    
+                    # Show statistics
+                    st.subheader("Risk Statistics")
+                    col1, col2, col3 = st.columns(3)
+                    col1.metric("Max Intensity", f"{df['intensity'].max():,.2f}")
+                    col2.metric("Min Intensity", f"{df['intensity'].min():,.2f}")
+                    col3.metric("Avg Intensity", f"{df['intensity'].mean():,.2f}")
+                    
+                    # Classification distribution
+                    st.subheader("Risk Classification Distribution")
+                    class_counts = df['intensity_class'].value_counts()
+                    st.bar_chart(class_counts)
+                    
+                    # Show high-risk samples
+                    st.subheader("High-Risk Locations")
+                    high_risk = df[df['intensity_class'] == 'Catastrophic']
+                    if not high_risk.empty:
+                        st.dataframe(high_risk[['GLIMS_ID', 'Date', 'dam_type', 'lake_volume', 'intensity', 'intensity_class']].head(10))
+                    else:
+                        st.info("No catastrophic risk locations found")
+                    
+                    # Show processed data
+                    st.subheader("Processed Data Preview")
+                    st.dataframe(df[['GLIMS_ID', 'Date', 'dam_type', 'lake_volume', 'intensity', 'intensity_class', 'intensity_class']].head())
+                    
+                    # Download button for the final processed data
+                    st.download_button(
+                        label="Download Final Processed Data",
+                        data=df.to_csv(index=False).encode('utf-8'),
+                        file_name='glof_risk_processed.csv',
+                        mime='text/csv'
+                    )
             
         except Exception as e:
             st.error(f"Error processing file: {str(e)}")
