@@ -246,28 +246,24 @@ elif page == "2. Assess GLOF Risk":
         st.dataframe(df.head())
         
         if st.button("Calculate GLOF Risk"):
-            try:
-                # Check required columns
-                required_columns_for_model = {
-                    'Temperature_Celsius', 'Rainfall_mm', 'Cloud_Cover_Percent', 'Humidity_Percent',
-                    'Seismic_Event_Count', 'lake_volume', 'dam_type', 'ice_coverage',
-                    'Slope_Mean(degree)', 'Elev_Mean(m)'
-                }
+            # Check required columns
+            required_columns_for_model = {
+                'Temperature_Celsius', 'Rainfall_mm', 'Cloud_Cover_Percent', 'Humidity_Percent',
+                'Seismic_Event_Count', 'lake_volume', 'dam_type', 'ice_coverage',
+                'Slope_Mean(degree)', 'Elev_Mean(m)'
+            }
+            
+            if not required_columns_for_model.issubset(df.columns):
+                missing = required_columns_for_model - set(df.columns)
+                st.error(f"Missing required columns for risk calculation: {', '.join(missing)}")
+                st.info("Please ensure your enriched data contains these columns.")
+            else:
+                with st.spinner('Calculating flood intensities...'):
+                    st.session_state['processed_df'] = df.copy()
+                    st.session_state['processed_df']['intensity'] = calculate_intensity(st.session_state['processed_df'])
+                    st.session_state['processed_df']['intensity_class'] = classify_intensity(st.session_state['processed_df']['intensity'])
                 
-                if not required_columns_for_model.issubset(df.columns):
-                    missing = required_columns_for_model - set(df.columns)
-                    st.error(f"Missing required columns for risk calculation: {', '.join(missing)}")
-                    st.info("Please ensure your enriched data contains these columns.")
-                else:
-                    with st.spinner('Calculating flood intensities...'):
-                        st.session_state['processed_df'] = df.copy()
-                        st.session_state['processed_df']['intensity'] = calculate_intensity(st.session_state['processed_df'])
-                        st.session_state['processed_df']['intensity_class'] = classify_intensity(st.session_state['processed_df']['intensity'])
-                    
-                    st.success("Processing complete!")
-            except Exception as e:
-                st.error(f"Error processing data: {str(e)}")
-                st.error("Please ensure your data contains all required columns for the model.")
+                st.success("Processing complete!")
                 
     else:
         st.markdown("""
