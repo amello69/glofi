@@ -190,8 +190,8 @@ if page == "1. Fetch Data":
             glacier_df = pd.read_csv(uploaded_file)
             st.write("Original Data Preview:")
             st.dataframe(glacier_df.head())
-
-            if st.button("Start Data Fetching"):
+            
+            if st.button("Process and Enrich Data"):
                 required_cols = {'GLIMS_ID', 'Longitude', 'Latitude'}
                 if not required_cols.issubset(glacier_df.columns):
                     st.error(f"Missing required columns: {required_cols - set(glacier_df.columns)}")
@@ -225,7 +225,6 @@ if page == "1. Fetch Data":
                         file_name='glacier_data_enriched.csv',
                         mime='text/csv'
                     )
-                    st.info("The downloaded file is ready for Stage 2.")
 
         except Exception as e:
             st.error(f"An error occurred: {e}")
