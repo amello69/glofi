@@ -222,7 +222,9 @@ if page == "1. Fetch Data":
                     enriched_data = pd.DataFrame(results)
                     st.session_state['enriched_df'] = pd.merge(st.session_state['uploaded_df_stage1'], enriched_data, on=['GLIMS_ID', 'Longitude', 'Latitude'], how='left')
                     st.success("Data fetching complete!")
-
+        except Exception as e:
+            st.error(f"Error processing file: {str(e)}")
+            st.error("Please ensure your uploaded CSV is a val")
     if st.session_state['enriched_df'] is not None:
         st.write("Enriched Data Preview:")
         st.dataframe(st.session_state['enriched_df'].head())
@@ -239,69 +241,50 @@ elif page == "2. Assess GLOF Risk":
     st.header("Stage 2: Calculate GLOF Risk & Visualize")
     
     # Check if enriched data from Stage 1 is available
-    if st.session_state['enriched_df'] is not None:
+    if 'enriched_df' in st.session_state and st.session_state['enriched_df'] is not None:
         st.success("Using enriched data from Stage 1. Click 'Calculate GLOF Risk' to proceed.")
-        df = st.session_state['enriched_df']
-        st.write("Enriched Data Preview:")
-        st.dataframe(df.head())
-        
-        if st.button("Calculate GLOF Risk"):
-            # Check required columns
-            required_columns_for_model = {
-                'Temperature_Celsius', 'Rainfall_mm', 'Cloud_Cover_Percent', 'Humidity_Percent',
-                'Seismic_Event_Count', 'lake_volume', 'dam_type', 'ice_coverage',
-                'Slope_Mean(degree)', 'Elev_Mean(m)'
-            }
-            
-            if not required_columns_for_model.issubset(df.columns):
-                missing = required_columns_for_model - set(df.columns)
-                st.error(f"Missing required columns for risk calculation: {', '.join(missing)}")
-                st.info("Please ensure your enriched data contains these columns.")
-            else:
-                with st.spinner('Calculating flood intensities...'):
-                    st.session_state['processed_df'] = df.copy()
-                    st.session_state['processed_df']['intensity'] = calculate_intensity(st.session_state['processed_df'])
-                    st.session_state['processed_df']['intensity_class'] = classify_intensity(st.session_state['processed_df']['intensity'])
-                
-                st.success("Processing complete!")
-                
+        df_to_process = st.session_state['enriched_df']
     else:
         st.markdown("""
-            No enriched data found from Stage 1. Please upload a CSV file to calculate the GLOF risk.
+            No enriched data found from Stage 1. Please upload a CSV file with enriched data.
         """)
         uploaded_file = st.file_uploader("Choose the enriched CSV file", type="csv")
-
+        df_to_process = None
         if uploaded_file is not None:
             try:
-                st.session_state['uploaded_df_stage2'] = pd.read_csv(uploaded_file)
+                df_to_process = pd.read_csv(uploaded_file)
                 st.write("Uploaded Data Preview:")
-                st.dataframe(st.session_state['uploaded_df_stage2'].head())
-                
-                if st.button("Calculate GLOF Risk"):
-                    df = st.session_state['uploaded_df_stage2']
-                    required_columns_for_model = {
-                        'Temperature_Celsius', 'Rainfall_mm', 'Cloud_Cover_Percent', 'Humidity_Percent',
-                        'Seismic_Event_Count', 'lake_volume', 'dam_type', 'ice_coverage',
-                        'Slope_Mean(degree)', 'Elev_Mean(m)'
-                    }
-                    
-                    if not required_columns_for_model.issubset(df.columns):
-                        missing = required_columns_for_model - set(df.columns)
-                        st.error(f"Missing required columns for risk calculation: {', '.join(missing)}")
-                        st.info("Please ensure your uploaded CSV contains these columns.")
-                    else:
-                        with st.spinner('Calculating flood intensities...'):
-                            st.session_state['processed_df'] = df.copy()
-                            st.session_state['processed_df']['intensity'] = calculate_intensity(st.session_state['processed_df'])
-                            st.session_state['processed_df']['intensity_class'] = classify_intensity(st.session_state['processed_df']['intensity'])
-                        
-                        st.success("Processing complete!")
-            
+                st.dataframe(df_to_process.head())
             except Exception as e:
                 st.error(f"Error processing file: {str(e)}")
+                st.error("Please ensure your uploaded CSV is a valid format.")
+    
+    # A single, clear block for processing and displaying results if data is available
+    if df_to_process is not None:
+        if st.button("Calculate GLOF Risk"):
+            try:
+                required_columns_for_model = {
+                    'Temperature_Celsius', 'Rainfall_mm', 'Cloud_Cover_Percent', 'Humidity_Percent',
+                    'Seismic_Event_Count', 'lake_volume', 'dam_type', 'ice_coverage',
+                    'Slope_Mean(degree)', 'Elev_Mean(m)'
+                }
+                
+                if not required_columns_for_model.issubset(df_to_process.columns):
+                    missing = required_columns_for_model - set(df_to_process.columns)
+                    st.error(f"Missing required columns for risk calculation: {', '.join(missing)}")
+                    st.info("Please ensure your data contains these columns.")
+                else:
+                    with st.spinner('Calculating flood intensities...'):
+                        st.session_state['processed_df'] = df_to_process.copy()
+                        st.session_state['processed_df']['intensity'] = calculate_intensity(st.session_state['processed_df'])
+                        st.session_state['processed_df']['intensity_class'] = classify_intensity(st.session_state['processed_df']['intensity'])
+                    
+                    st.success("Processing complete!")
+            except Exception as e:
+                st.error(f"Error processing data: {str(e)}")
                 st.error("Please ensure your data contains all required columns for the model.")
-
-    if st.session_state['processed_df'] is not None:
+    
+    if st.session_state.get('processed_df') is not None:
         # Show statistics
         st.subheader("Risk Statistics")
         col1, col2, col3 = st.columns(3)
